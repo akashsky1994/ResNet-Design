@@ -1,0 +1,39 @@
+[3, 3, 2], 42 AdaDelta 0.2 0.0001 ((5x5),(5x5),(5x5),(5x5)) --- 88
+[3, 3, 2], 42 AdaDelta 0.2 0.0001 ((5x5),(5x5),(5x5),(5x5)) loss sum --- 83.72
+[3, 3, 3], 32 AdaDelta 0.2 0.00001 ((5x5),(5x5),(5x5),(5x5)) --- 87.77
+[3, 3, 3], 32 AdaDelta 0.2 0.00001 ((5x5),(5x5),(5x5),(5x5)) transform --- 82
+[3, 2, 2], 64 AdaDelta 0.2 0.00001 ((5x5),(3x3),(3x3),(5x5)) - 82
+[2,2,2,2], 42 AdaDelta 0.2 0.00001 ((3x3),(3x3),(1x1),(3x3)) - 86
+[2, 2, 1], 64 AdaDelta 0.2 0.00001 ((5x5),(3x3),(3x3),(5x5))  - 
+[4,4,2], 64 AdaDelta 0.2 0.0001 ((3x3),(3x3),(3x3),(3x3)) 8 - 
+[2,2,2] 16 Adadelta 0.2
+[2,2,2,1]
+
+------------------
+
+ResNet(BasicBlock, [2,3,2], 32, 5,3) 5 batch_size = 128 learningRate = 0.2 weight_decay = 0.0005 - 90.08
+ResNet(BasicBlock, [2,3,2], 32, 5,3) 5 batch_size = 128 learningRate = 0.2 weight_decay = 0.0005 Transform - 86
+
+
+ResNet(BasicBlock, [4,3,2], 32, kernel_size=5,skip_kernel_size=3) batch 128 learningRate = 0.1 weight_decay = 0.0005 - 91
+
+
+ResNet(BasicBlock, [2,2,2], 64, 3,3) 5 batch_size= 128 lr = 0.2 weight_decay = 0.0005 - 87.4
+
+ResNet(BasicBlock, [3,3,2], 42, 3,3) 5 batch_size = 128 learningRate = 0.2 weight_decay = 0.0005 -- 77
+
+
+------------------
+
+ResNet(BasicBlock, [2,2,2], 64, 3,3) 5 batch_size= 400 lr = 0.02
+
+ResNet(BasicBlock, [4,3,2,2], 32, 3,3) 5 batch_size= 400 learningRate = 0.01 weight_decay = 0.0005 -- 85
+
+ResNet(BasicBlock, [3,2], 128, 3,3) 5 batch_size = 128 learningRate = 0.02 weight_decay = 0.0005 - 83
+
+
+Aim
+increase channel
+torchvision.transforms.AutoAugment(torchvision.transforms.autoaugment.AutoAugmentPolicy="CIFAR10"),
+
+https://arxiv.org/pdf/1805.09501.pdf

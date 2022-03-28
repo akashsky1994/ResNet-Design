@@ -1,22 +1,23 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 class BasicBlock(nn.Module):
 
-    def __init__(self, in_planes, planes, stride=1):
+    def __init__(self, in_planes, planes, kernel, skip_kernel, stride=1, bias=True):
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv2d(
-            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+            in_planes, planes, kernel_size=kernel[0], stride=stride, padding=kernel[1], bias=bias)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=kernel[0],
+                               stride=1, padding=kernel[1], bias=bias)
         self.bn2 = nn.BatchNorm2d(planes)
 
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_planes, planes,
-                          kernel_size=1, stride=stride, bias=False),
+                          kernel_size=skip_kernel[0], padding=skip_kernel[1], stride=stride, bias=bias),
                 nn.BatchNorm2d(planes)
             )
 
@@ -30,37 +31,57 @@ class BasicBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
+    def __init__(self, block, in_planes, num_layers, num_blocks, kernel, skip_kernel, num_classes=10, bias=True):
+        if not isinstance(num_blocks, list):
+            raise Exception("num_blocks parameter should be a list of integer values")
+        if num_layers != len(num_blocks):
+            raise Exception("Residual layers should be equal to the length of num_blocks list")
         super(ResNet, self).__init__()
-        self.in_planes = 64
+        self.kernel = kernel
+        self.skip_kernel = skip_kernel
+        self.in_planes = in_planes
+        self.conv1 = nn.Conv2d(3, self.in_planes, kernel_size=kernel[0],
+                               stride=1, padding=kernel[1], bias=bias)
+        self.bn1 = nn.BatchNorm2d(self.in_planes)
+        self.num_layers = num_layers
+        self.layer1 = self._make_layer(block, self.in_planes, num_blocks[0], stride=1, bias=bias)
+        for i in range(2, num_layers+1):
+            setattr(self, "layer"+str(i), self._make_layer(block, 2*self.in_planes, num_blocks[i-1], stride=2, bias=bias))
+        finalshape = list(getattr(self, "layer"+str(num_layers))[-1].modules())[-2].num_features
+        self.multiplier = 4 if num_layers == 2 else (2 if num_layers == 3 else 1)
+        self.linear = nn.Linear(finalshape, num_classes)
+        self.path = "./project1_model.pt"
 
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512, num_classes)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
+    def _make_layer(self, block, planes, num_blocks, stride, bias=True):
         strides = [stride] + [1]*(num_blocks-1)
-        layers = []
+        custom_layers = []
         for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
+            custom_layers.append(block(self.in_planes, planes,self.kernel,self.skip_kernel, stride, bias))
             self.in_planes = planes
-        return nn.Sequential(*layers)
+        return nn.Sequential(*custom_layers)
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = F.avg_pool2d(out, 4)
+        for i in range(1, self.num_layers+1):
+            out = eval("self.layer" + str(i) + "(out)")
+        out = F.avg_pool2d(out, 4*self.multiplier)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
 
+    def saveToDisk(self):
+        torch.save(self.state_dict(), self.path)
+
+    def loadFromDisk(self):
+        self.load_state_dict(torch.load(self.path))
+
 def project1_model():
-    return ResNet(BasicBlock, [2, 2, 2, 2])
+    return ResNet(BasicBlock, 32, 4, [4, 4, 4, 2],kernel=(3,1),skip_kernel=(1,0), num_classes=10, bias=True)
+
+if __name__ == "__main__":
+    pass
+    # model = ResNet(BasicBlock, 128, 2, [2, 2],kernel=(3,1),skip_kernel=(1,0), 10, bias=True)
+    # trainable_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    # print(trainable_parameters)
+    # x = torch.rand(1, 3, 32, 32)
+    # model(x)
